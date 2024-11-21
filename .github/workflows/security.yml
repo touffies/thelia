@@ -1,13 +1,36 @@
-name: Security Checker
+name: Security
 
-on: [ pull_request ]
+on:
+    push:
+        branches: [ main ]
+    pull_request: ~
+    release:
+        types: [ created ]
+    schedule:
+      # Do not make it the first of the month and/or midnight since it is a very busy time
+          - cron: "* 10 5 * *"
+
+# See https://stackoverflow.com/a/72408109
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  security-checker:
-    name: Symfony Security Checker
+    security:
+        runs-on: ubuntu-latest
+        name: Check Dependencies
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+                with:
+                    fetch-depth: 0
 
-    runs-on: ubuntu-latest
+            -   name: Cache the vulnerability database
+                uses: actions/cache@v4
+                id: cache-db
+                with:
+                    path: ~/.symfony/cache
+                    key: db
 
-    steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: symfonycorp/security-checker-action@v5
+            -   name: Checks dependencies for known vulnerabilities
+                uses: symfonycorp/security-checker-action@v5
